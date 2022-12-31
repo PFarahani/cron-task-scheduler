@@ -7,12 +7,12 @@ This script allows you to schedule tasks and find the non-overlapping times betw
 To use the script, you can follow these steps:
 
 1. Clone the repository to your local machine:
-```bash
+```
 git clone https://github.com/<your_username>/cron-task-scheduler.git
 ```
 
 2. Navigate to the cron-task-scheduler directory:
-```bash
+```
 cd cron-task-scheduler
 ```
 
@@ -27,15 +27,16 @@ add_task("task3", "category2", "0 9 * * *", datetime.timedelta(hours=1))
 ```python
 new_task_name = "task4"
 new_task_schedule = "0 9-11 * * *"
+new_task_category = "category2"
 new_task_runtime = datetime.timedelta(hours=1)
 
 start_time = datetime.datetime.now()
 end_time = start_time + datetime.timedelta(days=7)
 ```
 
-5. Find the non-overlapping times for the new task within the interval using the `find_overlapping_times_within_interval` function, which takes the new task's name, schedule, runtime, and the start and end times of the interval as arguments, and returns a dictionary with the non-overlapping times for each task.
+5. Find the non-overlapping times for the new task within the interval using the `find_overlapping_times_within_interval` function, which takes the new task's name, schedule, runtime, start and end times of the interval, and the `consider_category` flag as arguments, and returns a dictionary with the non-overlapping times for each task.
 ```python
-non_overlapping_times = find_overlapping_times_within_interval(new_task_name, new_task_schedule, new_task_runtime, start_time, end_time)
+non_overlapping_times = find_overlapping_times_within_interval(new_task_name, new_task_schedule, new_task_category, new_task_runtime, start_time, end_time, consider_category)
 ```
 
 6. You can access the non-overlapping times for each task by iterating over the dictionary and accessing the values for each key:
@@ -48,6 +49,6 @@ for t in non_overlapping_times:
 
 ## Dependencies
 This script uses the `croniter` library to parse the crontab schedules and find the next execution time. You can install it using `pip`:
-```bash
+```
 pip install croniter
 ```
