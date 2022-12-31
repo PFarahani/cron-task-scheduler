@@ -14,7 +14,7 @@ def add_task(name, category, schedule, runtime):
     "runtime": runtime,
   }
 
-def find_overlapping_times_within_interval(task, schedule, runtime, start_time, end_time):
+def find_overlapping_times_within_interval(task, schedule, category, runtime, start_time, end_time, consider_category=False):
   # create a croniter object from the schedule
   schedule = croniter.croniter(schedule)
 
@@ -26,6 +26,12 @@ def find_overlapping_times_within_interval(task, schedule, runtime, start_time, 
     # skip the task itself
     if t == task:
       continue
+
+    # check if the category of the new task should be considered
+    if consider_category:
+      # skip the task if it has a different category
+      if tasks[t]["category"] != category:
+        continue
 
     # get the schedule and runtime for the other task
     other_schedule = tasks[t]["schedule"]
@@ -64,6 +70,7 @@ add_task("task3", "category2", "0 9 * * *", datetime.timedelta(hours=1))
 # schedule a new task
 new_task_name = "task4"
 new_task_schedule = "0/30 8-11 * * *"
+new_task_category = "category2"
 new_task_runtime = datetime.timedelta(minutes=30)
 
 # define the start and end times for the interval
@@ -74,7 +81,7 @@ start_time = datetime.datetime.timestamp(start_time)
 end_time = datetime.datetime.timestamp(end_time)
 
 # find the non-overlapping times for the new task within the interval
-non_overlapping_times = find_overlapping_times_within_interval(new_task_name, new_task_schedule, new_task_runtime, start_time, end_time)
+non_overlapping_times = find_overlapping_times_within_interval(new_task_name, new_task_schedule, new_task_category, new_task_runtime, start_time, end_time, consider_category=False)
 
 # print the non-overlapping times for each task
 for t in non_overlapping_times:
