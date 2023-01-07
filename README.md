@@ -77,6 +77,7 @@ add_task("task3", "category2", "0 9 * * *", datetime.timedelta(hours=1))
 ```python
 new_task_name = "task4"
 new_task_schedule = "0 9-11 * * *"
+new_task_category = "category2"
 new_task_runtime = datetime.timedelta(hours=1)
 
 start_time = datetime.datetime.now()
@@ -85,7 +86,7 @@ end_time = start_time + datetime.timedelta(days=7)
 
 3. Find the non-overlapping times for the new task within the interval using the `find_overlapping_times_within_interval` function, which takes the new task's name, schedule, runtime, start and end times of the interval, and the `consider_category` flag as arguments, and returns a dictionary with the non-overlapping times for each task.
 ```python
-non_overlapping_times = find_overlapping_times_within_interval(new_task_name, new_task_schedule, new_task_runtime, start_time, end_time)
+non_overlapping_times = find_overlapping_times_within_interval(new_task_name, new_task_schedule, new_task_category, new_task_runtime, start_time, end_time, consider_category)
 ```
 
 4. You can access the non-overlapping times for each task by iterating over the dictionary and accessing the values for each key:
