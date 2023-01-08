@@ -23,13 +23,21 @@ def get_task_datetimes(cron_schedule, start_date, end_date, time_interval):
         
         # Check if the datetime is within the specified time interval
         dt = datetime.datetime.fromtimestamp(dt)
+
+        if start_hour > end_hour: # Means that part of the interval is in the next day
+            if dt.hour >= start_hour and dt.hour != 0:
+                # Add the datetime to the list if it is before midnight
+                datetimes.append(datetime.datetime.strftime(dt,'%Y-%m-%d %H:%M'))
+            elif dt.hour >= 0 and dt.hour < end_hour:
+                # Add the datetime to the list if it is past midnight
+                datetimes.append(datetime.datetime.strftime(dt,'%Y-%m-%d %H:%M'))
+
         if dt.hour >= start_hour and dt.hour < end_hour:
             # Add the datetime to the list if it is
             datetimes.append(datetime.datetime.strftime(dt,'%Y-%m-%d %H:%M'))
     
     # Return the list of datetimes, or None if the list is empty
     return datetimes if datetimes else None
-
 
 
 # Load the dataframe containing the tasks and their crontab schedules
