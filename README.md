@@ -52,7 +52,9 @@ This script parses and interprets crontab schedules to generate a list of dateti
 
 #### Usage
 
-To use the script, call the `get_task_datetimes` function and pass in the dataframe containing the tasks and their crontab schedules, as well as the time interval, start date, and end date as arguments. The function will return a dataframe containing the task names and their corresponding datetimes within the specified time interval and date range.
+To use the script, call the `get_task_datetimes` function and pass in the dataframe containing the tasks and their crontab schedules, as well as the time interval, time zone, start date, and end date as arguments. The function will return a dataframe containing the task names and their corresponding datetimes within the specified time interval and date range.
+
+You can also specify the `time_zone` argument to set the time zone for the datetimes returned by the function. The default time zone is UTC. If you don't specify a time zone, the datetimes will be in UTC. To specify a different time zone, pass the name of the time zone as a string (e.g. "Asia/Tokyo" for Tokyo time). You can find a list of available time zones [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
 
 ### cron_task_scheduler.py
 
