@@ -1,8 +1,36 @@
 import pandas as pd
 import croniter
 import datetime
+import pytz
+import re
 
-def get_task_datetimes(cron_schedule, start_date, end_date, time_interval):
+def get_task_datetimes(cron_schedule, start_date, end_date, time_interval, time_zone):
+    """
+    Generate a list of datetimes for tasks within a specified time interval and date range.
+    
+    Parameters:
+    - cron_schedule (str): Cron schedule for the task.
+    - start_date (str or datetime): Start date for the date range. If a string, must be in the
+        format 'YYYY-MM-DD'.
+    - end_date (str or datetime): End date for the date range. If a string, must be in the
+        format 'YYYY-MM-DD'.
+    - time_interval (tuple): Time interval for the datetimes, in the format (start_hour, end_hour).
+        Both start_hour and end_hour should be integers between 0 and 23.
+    - time_zone (str): Time zone of the datetimes.
+    
+    Returns:
+    - list: List of datetime objects for the task.
+    """
+    # Convert start_date and end_date to datetime objects
+    if isinstance(start_date, str):
+        start_date = datetime.fromisoformat(start_date)
+    if isinstance(end_date, str):
+        end_date = datetime.fromisoformat(end_date)
+
+    # Set the timezone for the datetime objects
+    start_date = start_date.replace(tzinfo=pytz.timezone(time_zone))
+    end_date = end_date.replace(tzinfo=pytz.timezone(time_zone))
+
     # Create a croniter object for the given schedule and start date
     cron = croniter.croniter(cron_schedule, start_date)
     
@@ -50,6 +78,40 @@ time_interval = input('Enter the time interval: ')
 start_hour, end_hour = map(int, time_interval.split())
 time_interval = (start_hour, end_hour)
 
+
+# Set the default time zone
+default_time_zone = pytz.UTC
+# Prompt the user to enter an offset from UTC in the format "±H:M" (e.g. "-8:00" for UTC-8, "8:00" for UTC+8, "0:00" for UTC)
+offset = input("Enter an offset from UTC in the format '±H:M' (e.g. '-8:00' for UTC-8, '8:00' for UTC+8, '+0:00' for UTC) or leave blank to use the default time zone: ")
+# Use the default time zone if the user didn't specify an offset
+if not offset:
+    time_zone = default_time_zone
+else:
+    # Validate the user's input
+    while not re.match(r"^[+-]\d+:\d\d$", offset):  # Check that the input consists of a sign character and two numbers separated by a colon
+        print("Invalid input. Please enter the offset in the format '±H:M'.")
+        offset = input("Enter an offset from UTC in the format '±H:M' (e.g. '-8:00' for UTC-8, '8:00' for UTC+8, '+0:00' for UTC) or leave blank to use the default time zone: ")
+    # Split the input on the ":" character
+    offset_parts = offset.split(":")
+    # Get the sign character and convert it to a multiplier
+    sign = offset_parts[0][0]
+    if sign == "+":
+        sign = 1
+    elif sign == "-":
+        sign = -1
+    else:
+        raise ValueError("Invalid sign character: '{}'. Please enter '+' for positive offsets or '-' for negative offsets.".format(sign))
+    # Convert the hours and minutes parts to integers
+    offset_hours = int(offset_parts[0][1])
+    offset_minutes = int(offset_parts[1])
+    # Create a time zone object with the specified offset from UTC
+    tz_offset = sign * (offset_hours * 60 + offset_minutes)  # Calculate the offset in minutes
+    time_zone = pytz.FixedOffset(tz_offset)
+    # Use the default time zone if the offset is 0
+    if offset_hours == 0 and offset_minutes == 0:
+        time_zone = default_time_zone
+
+
 # Prompt the user for the start date
 print('Enter the start date in the format: YYYY-MM-DD')
 print('Alternatively, enter "now" to use the current date and time as the start date')
@@ -61,6 +123,7 @@ if start_date_input == 'now':
 else:
     # Parse the input date and time
     start_date = pd.to_datetime(start_date_input)
+
 
 # Prompt the user for the end date
 print('Enter the end date in the format: YYYY-MM-DD')
@@ -76,6 +139,7 @@ else:
     # Parse the input date and time
     end_date = pd.to_datetime(end_date_input)
 
+
 # Initialize an empty list to store the task data
 task_data = []
 
@@ -85,7 +149,7 @@ for _, row in df.iterrows():
     task_name = row['command']
     cron_schedule = row['schedule']
     # Get the list of datetimes for the task
-    datetimes = get_task_datetimes(cron_schedule, start_date, end_date, time_interval)
+    datetimes = get_task_datetimes(cron_schedule, start_date, end_date, time_interval, time_zone)
     
     # Add the task name and datetimes to the task data list if the list is not empty
     if datetimes:
@@ -94,5 +158,5 @@ for _, row in df.iterrows():
 # Create a new dataframe from the task data
 df_output = pd.DataFrame(task_data)
 
-# Save the dataframe
+# Save the output
 df_output.to_csv("functions_btw_{}and{}.csv".format(start_hour,end_hour))
