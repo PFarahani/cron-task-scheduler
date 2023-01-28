@@ -3,6 +3,7 @@ import croniter
 import datetime
 import pytz
 import re
+import data_preprocessor
 
 def get_task_datetimes(cron_schedule, start_date, end_date, time_interval, time_zone):
     """
@@ -28,8 +29,8 @@ def get_task_datetimes(cron_schedule, start_date, end_date, time_interval, time_
         end_date = datetime.fromisoformat(end_date)
 
     # Set the timezone for the datetime objects
-    start_date = start_date.replace(tzinfo=pytz.timezone(time_zone))
-    end_date = end_date.replace(tzinfo=pytz.timezone(time_zone))
+    start_date = start_date.replace(tzinfo=time_zone)
+    end_date = end_date.replace(tzinfo=time_zone)
 
     # Create a croniter object for the given schedule and start date
     cron = croniter.croniter(cron_schedule, start_date)
@@ -69,7 +70,10 @@ def get_task_datetimes(cron_schedule, start_date, end_date, time_interval, time_
 
 
 # Load the dataframe containing the tasks and their crontab schedules
-df = pd.read_csv('functions.csv')
+functions_path = './functions.csv'
+dags_path = './dags.csv'
+priority_path = './priority.csv'
+df = data_preprocessor.main()
 
 # Prompt the user for the time interval
 print('Enter the time interval in the format: start_hour end_hour')
@@ -82,7 +86,8 @@ time_interval = (start_hour, end_hour)
 # Set the default time zone
 default_time_zone = pytz.UTC
 # Prompt the user to enter an offset from UTC in the format "±H:M" (e.g. "-8:00" for UTC-8, "8:00" for UTC+8, "0:00" for UTC)
-offset = input("Enter an offset from UTC in the format '±H:M' (e.g. '-8:00' for UTC-8, '8:00' for UTC+8, '+0:00' for UTC) or leave blank to use the default time zone: ")
+print("Enter an offset from UTC in the format '±H:M'\n(e.g. '-8:00' for UTC-8, '8:00' for UTC+8, '+0:00' for UTC)\nor leave blank to use the default time zone: ")
+offset = input()
 # Use the default time zone if the user didn't specify an offset
 if not offset:
     time_zone = default_time_zone
@@ -90,7 +95,8 @@ else:
     # Validate the user's input
     while not re.match(r"^[+-]\d+:\d\d$", offset):  # Check that the input consists of a sign character and two numbers separated by a colon
         print("Invalid input. Please enter the offset in the format '±H:M'.")
-        offset = input("Enter an offset from UTC in the format '±H:M' (e.g. '-8:00' for UTC-8, '8:00' for UTC+8, '+0:00' for UTC) or leave blank to use the default time zone: ")
+        print("Enter an offset from UTC in the format '±H:M'\n(e.g. '-8:00' for UTC-8, '8:00' for UTC+8, '+0:00' for UTC)\nor leave blank to use the default time zone: ")
+        offset = input()
     # Split the input on the ":" character
     offset_parts = offset.split(":")
     # Get the sign character and convert it to a multiplier
@@ -146,14 +152,14 @@ task_data = []
 # Iterate over the tasks in the dataframe
 for _, row in df.iterrows():
     # Get the task name and crontab schedule
-    task_name = row['command']
+    task_name = row['job_name']
     cron_schedule = row['schedule']
     # Get the list of datetimes for the task
     datetimes = get_task_datetimes(cron_schedule, start_date, end_date, time_interval, time_zone)
     
     # Add the task name and datetimes to the task data list if the list is not empty
     if datetimes:
-        task_data.append({'command': task_name, 'datetimes': datetimes})
+        task_data.append({'job_name': task_name, 'datetimes': datetimes})
 
 # Create a new dataframe from the task data
 df_output = pd.DataFrame(task_data)
