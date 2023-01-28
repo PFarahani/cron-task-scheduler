@@ -2,6 +2,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.offline as offline
 import croniter
+import data_preprocessor
+
 
 def create_gantt_chart(df, interval, tasks):
     # Convert the crontab schedules to a list of dictionaries in the form {'Start': start_time, 'Finish': end_time, 'Task': task}
@@ -42,7 +44,11 @@ def create_gantt_chart(df, interval, tasks):
 
 
 # Example usage
-df = pd.DataFrame({'job_name': functions['command'], 'schedule': functions['schedule'], 'duration': functions['avg'], 'category': functions['category']})
+functions_path = './functions.csv'
+dags_path = './dags.csv'
+priority_path = '.priority.csv'
+df = data_preprocessor.main(functions_path,dags_path,priority_path)
+df = pd.DataFrame({'job_name': functions['job_name'], 'schedule': functions['schedule'], 'duration': functions['avg_runtime'], 'category': functions['category']})
 
 # Ask the user for the interval
 interval = {}
