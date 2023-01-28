@@ -1,7 +1,7 @@
 import pandas as pd
 import datetime
 import croniter
-
+import data_preprocessor
 
 def generate_start_date(tasks):
   """
@@ -40,10 +40,13 @@ def generate_start_date(tasks):
 
 
 # Define the tasks
-tasks_df = pd.read_csv(tasks.csv)
+functions_path = './functions.csv'
+dags_path = './dags.csv'
+priority_path = './priority.csv'
+cron_data = data_preprocessor.main(functions_path, dags_path, priority_path)
 
 # Define the free time intervals
-tasks = generate_start_date(tasks_df)
+tasks = generate_start_date(cron_data)
 
 
 def find_free_times(tasks, start_time, end_time, consider_category=False):
@@ -72,6 +75,7 @@ def find_free_times(tasks, start_time, end_time, consider_category=False):
     # Get the crontab schedule and category
     crontab = task["schedule"]
     category = task["category"]
+    runtime = task['avg_runtime']
 
     # Use croniter to find the next occurrence of the crontab schedule
     cron = croniter.croniter(crontab, datetime.datetime.now())
@@ -83,7 +87,7 @@ def find_free_times(tasks, start_time, end_time, consider_category=False):
       # If this is not the first task, the free time starts at the end of the previous task
       prev_cron = croniter.croniter(tasks.iloc[i-1]["schedule"], datetime.datetime.now())
       prev_end_time = prev_cron.get_next(datetime.datetime)
-      free_start_time = prev_end_time + datetime.timedelta(minutes=1)
+      free_start_time = prev_end_time + runtime
 
     # The free time ends at the start of the current task
     task_start_time = cron.get_next(datetime.datetime)
@@ -181,6 +185,39 @@ def generate_crontab_schedule(free_times, max_runs_per_day, min_hours_gap, avera
   return pd.DataFrame(results)
 
 
+def priority_check(df, cron_data):
+  """
+  This function checks for overlaps between the crontab schedules in the 
+  generated crontab schedules dataframe and the schedules in the main dataframe
+  with priority != 5. It creates a new column 'overlap' and populates it with 
+  the number of overlaps for each schedule.
+  """
+  df['overlap'] = None
+  priority = cron_data[cron_data['priority']!=5]
+  overlap_dict = {}
+
+  for i, row in priority.iterrows():
+      function_name = row['job_name']
+      priority_schedule = row['schedule']
+      priority_runtime = row['avg_runtime']
+      priority_cron = croniter.croniter(priority_schedule)
+      priority_next_run_time = priority_cron.get_next(datetime.datetime)
+      count = 0
+      for j, df_row in df.iterrows():
+          schedule = df_row['crontab_schedule']
+          df_cron = croniter.croniter(schedule)
+          df_next_run_time = df_cron.get_next(datetime.datetime)
+          if (priority_next_run_time < df_next_run_time) and (df_next_run_time <= priority_next_run_time + priority_runtime):
+              count += 1
+      if count>0:
+          overlap_dict[function_name] = count
+
+      rows = df[df['crontab_schedule']== schedule]
+      df.loc[rows.index, 'overlap'] = [overlap_dict for _ in range(len(rows))]
+
+  return df
+
+
 # Set the maximum number of times the task can run
 max_runs_per_day = 4
 
@@ -191,5 +228,8 @@ min_hours_gap = 2
 df = pd.DataFrame()
 for average_runtime in range(1, 16):
   df = df.append(generate_crontab_schedule(free_times_df, max_runs_per_day, min_hours_gap, average_runtime)).reset_index(drop=True)
+
+# Check for priority violations
+df = priority_check(df, cron_data)
 
 df.to_csv("output.csv")
