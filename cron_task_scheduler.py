@@ -1,6 +1,7 @@
 import pandas as pd
 import datetime
 import croniter
+import re
 import data_preprocessor
 
 def generate_start_date(tasks):
@@ -126,7 +127,7 @@ free_times_df = find_free_times(tasks, start_time, end_time)
 free_times_df = find_free_times(tasks, start_time, end_time, consider_category=True)
 
 
-def generate_crontab_schedule(free_times, max_runs_per_day, min_hours_gap, average_runtime):
+def generate_crontab_schedule(free_times, max_runs_per_day, min_hours_gap, average_runtime, time_zone):
   """
   Generates a crontab schedule that fits within the free time intervals and takes into consideration the possibility of the task running multiple times per day with a certain number of hours gap between each run.
 
@@ -147,6 +148,10 @@ def generate_crontab_schedule(free_times, max_runs_per_day, min_hours_gap, avera
     start_datetime = row['start_time']
     end_datetime = row['end_time']
     
+    # Shift the datetime objects to match the local time
+    start_datetime_tz = start_datetime + pd.Timedelta(time_zone)
+    end_datetime_tz = end_datetime + pd.Timedelta(time_zone)
+
     # Calculate the number of minutes between the start and end datetimes
     duration = (end_datetime - start_datetime).total_seconds() / 60.0
 
@@ -164,8 +169,17 @@ def generate_crontab_schedule(free_times, max_runs_per_day, min_hours_gap, avera
           crontab = f"{start_datetime.minute} {start_datetime.hour}-{end_datetime.hour}/{frequency} * * *"
       else:
         crontab = f"{start_datetime.minute} {start_datetime.hour} * * *"
+      # Generate a crontab schedule for the local time
+      if frequency > 0:
+        if start_datetime_tz.hour > end_datetime_tz.hour: # Means that part of the interval is in the next day
+          crontab_tz = f"{start_datetime_tz.minute} {start_datetime_tz.hour}-23/{frequency},0-{end_datetime_tz.hour}/{frequency} * * *"
+        else:
+          crontab_tz = f"{start_datetime_tz.minute} {start_datetime_tz.hour}-{end_datetime_tz.hour}/{frequency} * * *"
+      else:
+        crontab_tz = f"{start_datetime_tz.minute} {start_datetime_tz.hour} * * *"
 
       cron = croniter.croniter(crontab, start_datetime)
+
 
       # Calculate the number of free datetimes that couldn't be assigned to this crontab
       num_unassigned = 0
@@ -178,6 +192,7 @@ def generate_crontab_schedule(free_times, max_runs_per_day, min_hours_gap, avera
       results.append({
         "average_runtime": average_runtime,
         "crontab_schedule": crontab,
+        "crontab_schedule_localTime": crontab_tz,
         "num_runs": num_runs,
         "num_unassigned": num_unassigned
       })
@@ -217,6 +232,24 @@ def priority_check(df, cron_data):
 
   return df
 
+# Set the offset from UTC in the format '±H:M'
+offset = "+3:30"
+# Split the input on the ":" character
+offset_parts = offset.split(":")
+# Get the sign character and convert it to a multiplier
+sign = offset_parts[0][0]
+if sign == "+":
+    sign = 1
+elif sign == "-":
+    sign = -1
+else:
+    raise ValueError("Invalid sign character: '{}'. Please enter '+' for positive offsets or '-' for negative offsets.".format(sign))
+# Convert the hours and minutes parts to integers
+offset_hours = int(offset_parts[0][1])
+offset_minutes = int(offset_parts[1])
+# Create a time zone object with the specified offset from UTC
+tz_offset = sign * (offset_hours * 60 + offset_minutes)  # Calculate the offset in minutes
+time_zone = pd.to_timedelta(tz_offset, unit='m')
 
 # Set the maximum number of times the task can run
 max_runs_per_day = 4
@@ -227,7 +260,7 @@ min_hours_gap = 2
 # Generate the crontab schedules for average runtimes between 1 and 15 minutes
 df = pd.DataFrame()
 for average_runtime in range(1, 16):
-  df = df.append(generate_crontab_schedule(free_times_df, max_runs_per_day, min_hours_gap, average_runtime)).reset_index(drop=True)
+  df = df.append(generate_crontab_schedule(free_times_df, max_runs_per_day, min_hours_gap, average_runtime, time_zone)).reset_index(drop=True)
 
 # Check for priority violations
 df = priority_check(df, cron_data)
