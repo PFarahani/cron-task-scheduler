@@ -105,11 +105,9 @@ You can also specify the `time_zone` argument to set the time zone for the datet
 
 This script is a tool for scheduling tasks using crontab schedules. The new version of the script takes into account the possibility of running the task multiple times in different free times instead of just one to minimize the number of times that the task cannot be assigned in those intervals.
 
-#### New Features in version 2.0.0:
+#### New Features in version 2.1.1:
 
-- The script now considers the possibility of running the task multiple times in different free times instead of just one, this feature is intended to minimize the number of times that the task cannot be assigned in those intervals.
-- The script now includes a flag `consider_category` which will limit the free times to the category of the task.
-- The script now includes `min_gap_time` to specify the minimum time gap between each run.
+- The script now includes a new column `crontab_schedule_localTime` which shows the crontab schedule in local time zone.
 
 #### Dependencies
 
@@ -128,7 +126,7 @@ generate_start_date(df: pandas.DataFrame, start_time: datetime, end_time: dateti
 find_free_times(df: pandas.DataFrame, start_time: datetime, end_time: datetime, consider_category = False)
 
 # to generate crontab schedule that fits within the time interval
-generate_crontab_schedule(df: pandas.DataFrame, max_runs_per_day: int, min_hours_gap: int, average_runtime: datetime.timedelta)
+generate_crontab_schedule(df: pandas.DataFrame, max_runs_per_day: int, min_hours_gap: int, average_runtime: datetime.timedelta, time_zone: datetime.timedelta)
 ```
 
 #### Note
@@ -140,7 +138,7 @@ generate_crontab_schedule(df: pandas.DataFrame, max_runs_per_day: int, min_hours
 
 #### Version
 
-2.1.0
+2.1.1
 
 ## Dependencies
 
